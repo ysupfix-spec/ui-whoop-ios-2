@@ -1,0 +1,35 @@
+# Builds an UNSIGNED iOS .ipa on a free GitHub macOS runner.
+# Install it with a sideloader (Sideloadly / AltStore) using your own Apple ID.
+name: Build IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build unsigned archive
+        run: |
+          xcodebuild archive \
+            -project Strand.xcodeproj \
+            -scheme NOOPiOS \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/NOOP.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package .ipa
+        run: |
+          APP=$(find build/NOOP.xcarchive/Products/Applications -name "*.app" -maxdepth 1 | head -1)
+          mkdir -p Payload && cp -R "$APP" Payload/
+          zip -qr NOOP-unsigned.ipa Payload
+          rm -rf Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NOOP-unsigned-ipa
+          path: NOOP-unsigned.ipa
